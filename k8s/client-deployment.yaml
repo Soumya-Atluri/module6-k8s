@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-client
+  labels:
+    app: inventory-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-client
+  template:
+    metadata:
+      labels:
+        app: inventory-client
+    spec:
+      containers:
+        - name: client
+          image: inventory-client:latest
+          imagePullPolicy: Never
+          env:
+            - name: INVENTORY_URL
+              value: "http://inventory-service:8080"
+            - name: INTERVAL_SECONDS
+              value: "2"
