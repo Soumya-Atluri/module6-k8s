@@ -1,0 +1,61 @@
+
+========== 3. Pod failure and recovery: deleting inventory-58d6d6846b-868ph  (Wed Nov  4 23:15:37 PST 2026) ==========
+
+========== Before deletion ==========
+$ kubectl get pods -l app=inventory -o wide
+NAME                         READY   STATUS              RESTARTS   AGE     IP            NODE                    NOMINATED NODE   READINESS GATES
+inventory-58d6d6846b-868ph   0/1     ErrImageNeverPull   0          6m31s   10.244.0.11   desktop-control-plane   <none>           <none>
+inventory-58d6d6846b-rt5km   0/1     ErrImageNeverPull   0          6m31s   10.244.0.12   desktop-control-plane   <none>           <none>
+
+$ kubectl get service inventory-service
+NAME                TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+inventory-service   ClusterIP   10.96.3.165   <none>        8080/TCP   6m31s
+
+$ kubectl delete pod inventory-58d6d6846b-868ph --wait=false
+pod "inventory-58d6d6846b-868ph" deleted from default namespace
+
+
+========== Immediately after deletion (old pod terminating, new pod being created) ==========
+$ kubectl get pods -l app=inventory -o wide
+NAME                         READY   STATUS              RESTARTS   AGE     IP            NODE                    NOMINATED NODE   READINESS GATES
+inventory-58d6d6846b-9z48r   0/1     ErrImageNeverPull   0          3s      10.244.0.13   desktop-control-plane   <none>           <none>
+inventory-58d6d6846b-rt5km   0/1     ErrImageNeverPull   0          6m34s   10.244.0.12   desktop-control-plane   <none>           <none>
+
+$ kubectl rollout status deployment/inventory --timeout=120s
+Waiting for deployment "inventory" rollout to finish: 0 of 2 updated replicas are available...
+error: timed out waiting for the condition
+
+
+========== After recovery ==========
+$ kubectl get pods -l app=inventory -o wide
+NAME                         READY   STATUS              RESTARTS   AGE     IP            NODE                    NOMINATED NODE   READINESS GATES
+inventory-58d6d6846b-9z48r   0/1     ErrImageNeverPull   0          2m9s    10.244.0.13   desktop-control-plane   <none>           <none>
+inventory-58d6d6846b-rt5km   0/1     ErrImageNeverPull   0          8m40s   10.244.0.12   desktop-control-plane   <none>           <none>
+
+$ kubectl get service inventory-service
+NAME                TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+inventory-service   ClusterIP   10.96.3.165   <none>        8080/TCP   8m40s
+
+$ kubectl get endpoints inventory-service
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                ENDPOINTS   AGE
+inventory-service               8m40s
+
+
+========== Summary ==========
+Deleted pod:          inventory-58d6d6846b-868ph
+Replacement pod:      <not found>
+Service before:       inventory-service 10.96.3.165
+Service after:        inventory-service 10.96.3.165
+
+Collecting 30s of client traffic after replacement...
+
+========== Client log after replacement (new pod should appear) ==========
+$ kubectl logs deployment/inventory-client --since=30s --tail=15
+Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+
+
+========== Requests per pod in the last 30s ==========
+$ kubectl logs deployment/inventory-client --since=30s | grep -o 'pod=[^ ]*' | sort | uniq -c
+Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+

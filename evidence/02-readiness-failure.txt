@@ -1,0 +1,44 @@
+
+========== 2a. Readiness failure: making inventory-58d6d6846b-868ph unready  (Wed Nov  4 23:13:36 PST 2026) ==========
+$ kubectl exec inventory-58d6d6846b-868ph -- POST http://localhost:8080/toggle-ready
+error: unable to upgrade connection: container not found ("inventory")
+
+Waiting for the readiness probe to mark inventory-58d6d6846b-868ph as NotReady...
+$ kubectl wait --for=condition=Ready=false pod/inventory-58d6d6846b-868ph --timeout=60s
+pod/inventory-58d6d6846b-868ph condition met
+
+
+========== Pod is still Running (READY 0/1, no restarts) ==========
+$ kubectl get pods -l app=inventory -o wide
+NAME                         READY   STATUS              RESTARTS   AGE     IP            NODE                    NOMINATED NODE   READINESS GATES
+inventory-58d6d6846b-868ph   0/1     ErrImageNeverPull   0          4m31s   10.244.0.11   desktop-control-plane   <none>           <none>
+inventory-58d6d6846b-rt5km   0/1     ErrImageNeverPull   0          4m31s   10.244.0.12   desktop-control-plane   <none>           <none>
+
+
+========== Only the ready pod is left in the Service endpoints ==========
+$ kubectl get endpoints inventory-service
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                ENDPOINTS   AGE
+inventory-service               4m31s
+
+
+========== Readiness probe events for inventory-58d6d6846b-868ph ==========
+$ kubectl describe pod inventory-58d6d6846b-868ph | (Events)
+Events:
+  Type     Reason             Age                     From               Message
+  ----     ------             ----                    ----               -------
+  Normal   Scheduled          4m30s                   default-scheduler  Successfully assigned default/inventory-58d6d6846b-868ph to desktop-control-plane
+  Warning  Failed             2m16s (x12 over 4m31s)  kubelet            spec.containers{inventory}: Error: ErrImageNeverPull
+  Warning  ErrImageNeverPull  2m1s (x13 over 4m31s)   kubelet            spec.containers{inventory}: Container image "inventory-service:latest" is not present with pull policy of Never
+
+Collecting 30s of client traffic while inventory-58d6d6846b-868ph is unready...
+
+========== Client log while inventory-58d6d6846b-868ph is unready (only inventory-58d6d6846b-rt5km should answer) ==========
+$ kubectl logs deployment/inventory-client --since=30s --tail=15
+Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+
+
+========== Requests per pod in the last 30s ==========
+$ kubectl logs deployment/inventory-client --since=30s | grep -o 'pod=[^ ]*' | sort | uniq -c
+Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+

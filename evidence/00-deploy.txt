@@ -1,0 +1,22 @@
+
+========== 0. Cluster and deployment  (Wed Nov  4 23:09:06 PST 2026) ==========
+$ kubectl config current-context
+docker-desktop
+
+$ kubectl get nodes
+NAME                    STATUS   ROLES           AGE   VERSION
+desktop-control-plane   Ready    control-plane   23d   v1.36.1
+
+$ kubectl apply -f k8s/
+deployment.apps/inventory-client created
+deployment.apps/inventory created
+service/inventory-service created
+
+$ kubectl rollout status deployment/inventory --timeout=120s
+Waiting for deployment "inventory" rollout to finish: 0 of 2 updated replicas are available...
+error: timed out waiting for the condition
+
+$ kubectl rollout status deployment/inventory-client --timeout=120s
+Waiting for deployment "inventory-client" rollout to finish: 0 of 1 updated replicas are available...
+error: timed out waiting for the condition
+
