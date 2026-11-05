@@ -1,22 +1,22 @@
 
-========== 1. Deployment, Service and load balancing  (Wed Nov  4 23:13:06 PST 2026) ==========
+========== 1. Deployment, Service and load balancing  (Wed Nov  4 23:47:47 PST 2026) ==========
 $ kubectl get deployment inventory
 NAME        READY   UP-TO-DATE   AVAILABLE   AGE
-inventory   0/2     2            0           4m
+inventory   2/2     2            2           16m
 
 $ kubectl get pods -l app=inventory -o wide
-NAME                         READY   STATUS              RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
-inventory-58d6d6846b-868ph   0/1     ErrImageNeverPull   0          4m    10.244.0.11   desktop-control-plane   <none>           <none>
-inventory-58d6d6846b-rt5km   0/1     ErrImageNeverPull   0          4m    10.244.0.12   desktop-control-plane   <none>           <none>
+NAME                         READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+inventory-58d6d6846b-hfbll   1/1     Running   0          16m   10.244.0.18   desktop-control-plane   <none>           <none>
+inventory-58d6d6846b-mcqf2   1/1     Running   0          16m   10.244.0.19   desktop-control-plane   <none>           <none>
 
 $ kubectl get service inventory-service
 NAME                TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
-inventory-service   ClusterIP   10.96.3.165   <none>        8080/TCP   4m
+inventory-service   ClusterIP   10.96.63.83   <none>        8080/TCP   16m
 
 $ kubectl get endpoints inventory-service
 Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME                ENDPOINTS   AGE
-inventory-service               4m
+NAME                ENDPOINTS                           AGE
+inventory-service   10.244.0.18:8080,10.244.0.19:8080   16m
 
 
 ========== Client is configured with the Service name (not pod IPs) ==========
@@ -27,10 +27,25 @@ Collecting 30s of client traffic...
 
 ========== Client log (last 15 lines) ==========
 $ kubectl logs deployment/inventory-client --tail=15
-Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-mcqf2  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-mcqf2  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
+[200] pod=inventory-58d6d6846b-mcqf2  items=5  status=ready
+[200] pod=inventory-58d6d6846b-hfbll  items=5  status=ready
 
 
 ========== Requests per pod in the last 30s (both replicas should appear) ==========
 $ kubectl logs deployment/inventory-client --since=30s | grep -o 'pod=[^ ]*' | sort | uniq -c
-Error from server (BadRequest): container "client" in pod "inventory-client-594d9c4d9c-l6kt2" is waiting to start: ErrImageNeverPull
+  12 pod=inventory-58d6d6846b-hfbll
+   3 pod=inventory-58d6d6846b-mcqf2
 
